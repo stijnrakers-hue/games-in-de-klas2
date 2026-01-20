@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Games in de klas – Klimaatverandering</title>
+  <style>
+    :root { --bg:#0b1220; --card:#111a2e; --text:#e9eefc; --muted:#a9b4d6; --ok:#33d17a; --warn:#ffcc00; --bad:#ff6b6b; }
+    body{ margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; background:linear-gradient(180deg,#0b1220,#070b14); color:var(--text); }
+    .wrap{ max-width:900px; margin:0 auto; padding:20px; }
+    h1{ margin:8px 0 6px; font-size:22px; }
+    p{ margin:0 0 12px; color:var(--muted); line-height:1.4; }
+    .grid{ display:grid; grid-template-columns:1fr; gap:12px; }
+    @media(min-width:720px){ .grid{ grid-template-columns:repeat(3,1fr); } }
+    .card{ background:var(--card); border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:14px; box-shadow:0 10px 30px rgba(0,0,0,.25); }
+    .tag{ display:inline-block; font-size:12px; padding:4px 8px; border-radius:999px; background:rgba(255,255,255,.08); color:var(--muted); margin-bottom:10px; }
+    .title{ font-weight:700; margin:0 0 6px; }
+    .sub{ font-size:13px; color:var(--muted); margin:0 0 12px; }
+    .btn{ width:100%; border:0; border-radius:12px; padding:12px 14px; font-weight:700; font-size:15px; cursor:pointer; }
+    .btn:active{ transform:translateY(1px); }
+    .btnPrimary{ background:#3b82f6; color:white; }
+    .btnLocked{ background:rgba(255,255,255,.08); color:rgba(233,238,252,.55); cursor:not-allowed; }
+    .status{ margin-top:10px; font-size:13px; color:var(--muted); display:flex; gap:8px; align-items:center; }
+    .dot{ width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,.25); }
+    .dot.ok{ background:var(--ok); }
+    .dot.warn{ background:var(--warn); }
+    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:12px; }
+    .miniBtn{ border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.06); color:var(--text); border-radius:10px; padding:10px 12px; cursor:pointer; font-weight:700; }
+    .miniBtn:active{ transform:translateY(1px); }
+    .note{ font-size:12px; color:var(--muted); margin-top:10px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Klimaatverandering – Mini-game arrangement</h1>
+    <p>Werk door de games heen. Als je een game <b>behaalt</b>, wordt de volgende ontgrendeld.</p>
+
+    <div class="grid">
+      <div class="card">
+        <span class="tag">Bloom: Onthouden</span>
+        <div class="title">Game 1 – Oorzaken quiz</div>
+        <div class="sub">Meerkeuzevragen over basisbegrippen (CO₂, broeikaseffect, fossiel).</div>
+        <button id="btn1" class="btn btnPrimary">Start Game 1</button>
+        <div class="status"><span id="dot1" class="dot"></span><span id="st1">Nog niet behaald</span></div>
+      </div>
+
+      <div class="card">
+        <span class="tag">Bloom: Begrijpen</span>
+        <div class="title">Game 2 – Koppel oorzaak → gevolg</div>
+        <div class="sub">Koppel oorzaken aan gevolgen van klimaatverandering.</div>
+        <button id="btn2" class="btn btnLocked">Vergrendeld</button>
+        <div class="status"><span id="dot2" class="dot"></span><span id="st2">Vergrendeld</span></div>
+      </div>
+
+      <div class="card">
+        <span class="tag">Bloom: Toepassen</span>
+        <div class="title">Game 3 – Scenario keuzes</div>
+        <div class="sub">Kies de beste oplossingen in situaties uit de praktijk.</div>
+        <button id="btn3" class="btn btnLocked">Vergrendeld</button>
+        <div class="status"><span id="dot3" class="dot"></span><span id="st3">Vergrendeld</span></div>
+      </div>
+    </div>
+
+    <div class="row">
+      <button class="miniBtn" id="reset">Reset voortgang</button>
+      <span class="note">Tip: maak straks screenshots van (1) deze hub en (2) “Behaald!” schermen.</span>
+    </div>
+  </div>
+
+<script>
+  const PROGRESS_KEY = "gik_progress_v1";
+  const defaultProgress = { game1:false, game2:false, game3:false };
+
+  function loadProgress(){
+    try {
+      const raw = localStorage.getItem(PROGRESS_KEY);
+      if(!raw) return {...defaultProgress};
+      const obj = JSON.parse(raw);
+      return { ...defaultProgress, ...obj };
+    } catch {
+      return {...defaultProgress};
+    }
+  }
+  function saveProgress(p){ localStorage.setItem(PROGRESS_KEY, JSON.stringify(p)); }
+
+  function updateUI(){
+    const p = loadProgress();
+
+    // Game 1 always available
+    document.getElementById("btn1").onclick = () => location.href = "game1.html";
+    if(p.game1){
+      document.getElementById("dot1").className = "dot ok";
+      document.getElementById("st1").textContent = "Behaald";
+    } else {
+      document.getElementById("dot1").className = "dot warn";
+      document.getElementById("st1").textContent = "Nog niet behaald";
+    }
+
+    // Game 2 unlocked if game1 achieved
+    const btn2 = document.getElementById("btn2");
+    if(p.game1){
+      btn2.className = "btn btnPrimary";
+      btn2.textContent = "Start Game 2";
+      btn2.onclick = () => location.href = "game2.html";
+      document.getElementById("st2").textContent = p.game2 ? "Behaald" : "Beschikbaar";
+      document.getElementById("dot2").className = p.game2 ? "dot ok" : "dot warn";
+    } else {
+      btn2.className = "btn btnLocked";
+      btn2.textContent = "Vergrendeld";
+      btn2.onclick = null;
+      document.getElementById("st2").textContent = "Vergrendeld";
+      document.getElementById("dot2").className = "dot";
+    }
+
+    // Game 3 unlocked if game2 achieved
+    const btn3 = document.getElementById("btn3");
+    if(p.game2){
+      btn3.className = "btn btnPrimary";
+      btn3.textContent = "Start Game 3";
+      btn3.onclick = () => location.href = "game3.html";
+      document.getElementById("st3").textContent = p.game3 ? "Behaald" : "Beschikbaar";
+      document.getElementById("dot3").className = p.game3 ? "dot ok" : "dot warn";
+    } else {
+      btn3.className = "btn btnLocked";
+      btn3.textContent = "Vergrendeld";
+      btn3.onclick = null;
+      document.getElementById("st3").textContent = "Vergrendeld";
+      document.getElementById("dot3").className = "dot";
+    }
+  }
+
+  // Listen for completion messages from games (optional)
+  window.addEventListener("message", (ev) => {
+    if(!ev || !ev.data) return;
+    if(ev.data.type === "GAME_DONE" && typeof ev.data.gameId === "string"){
+      const p = loadProgress();
+      if(ev.data.gameId === "game1") p.game1 = true;
+      if(ev.data.gameId === "game2") p.game2 = true;
+      if(ev.data.gameId === "game3") p.game3 = true;
+      saveProgress(p);
+      updateUI();
+    }
+  });
+
+  document.getElementById("reset").onclick = () => {
+    localStorage.removeItem(PROGRESS_KEY);
+    updateUI();
+  };
+
+  updateUI();
+</script>
+</body>
+</html>
