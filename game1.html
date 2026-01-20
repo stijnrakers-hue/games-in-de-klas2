@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Game 1 – Oorzaken quiz</title>
+  <style>
+    :root { --bg:#0b1220; --card:#111a2e; --text:#e9eefc; --muted:#a9b4d6; --ok:#33d17a; --bad:#ff6b6b; --btn:#3b82f6; }
+    body{ margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; background:linear-gradient(180deg,#0b1220,#070b14); color:var(--text); }
+    .wrap{ max-width:760px; margin:0 auto; padding:18px; }
+    h1{ font-size:20px; margin:8px 0 6px; }
+    p{ margin:0 0 12px; color:var(--muted); line-height:1.4; }
+    .card{ background:var(--card); border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:14px; box-shadow:0 10px 30px rgba(0,0,0,.25); }
+    .q{ font-weight:800; margin:0 0 10px; }
+    .opt{ display:block; width:100%; text-align:left; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.06); color:var(--text);
+      border-radius:12px; padding:12px 12px; margin:10px 0; cursor:pointer; font-weight:700; font-size:15px; }
+    .opt:active{ transform:translateY(1px); }
+    .opt[disabled]{ opacity:.6; cursor:not-allowed; }
+    .bar{ height:10px; background:rgba(255,255,255,.08); border-radius:999px; overflow:hidden; margin:10px 0 14px; }
+    .bar > div{ height:100%; background:var(--btn); width:0%; }
+    .feedback{ margin-top:8px; font-weight:800; }
+    .ok{ color:var(--ok); }
+    .bad{ color:var(--bad); }
+    .row{ display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+    .btn{ border:0; border-radius:12px; padding:12px 14px; font-weight:800; cursor:pointer; background:var(--btn); color:white; min-height:44px; }
+    .btn2{ background:rgba(255,255,255,.08); color:var(--text); border:1px solid rgba(255,255,255,.14); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Game 1 (Bloom: Onthouden) – Oorzaken quiz</h1>
+    <p>Kies het juiste antwoord. Doel: <b>minimaal 70%</b> goed.</p>
+
+    <div class="card">
+      <div class="bar" aria-label="voortgang"><div id="prog"></div></div>
+      <div id="qbox">
+        <div class="q" id="qtext"></div>
+        <div id="opts"></div>
+        <div class="feedback" id="fb"></div>
+      </div>
+
+      <div id="end" style="display:none;">
+        <div class="q">Klaar!</div>
+        <p id="scoreLine"></p>
+        <p id="resultLine" class="feedback"></p>
+        <div class="row">
+          <button class="btn" id="again">Opnieuw</button>
+          <button class="btn btn2" id="back">Terug naar hub</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const PROGRESS_KEY = "gik_progress_v1";
+
+  const questions = [
+    {
+      q: "Welke gas wordt vaak genoemd als belangrijke broeikasgas door menselijk gedrag?",
+      options: ["Zuurstof (O₂)", "Koolstofdioxide (CO₂)", "Stikstof (N₂)"],
+      correct: 1,
+      expl: "CO₂ neemt toe door o.a. fossiele brandstoffen en ontbossing."
+    },
+    {
+      q: "Wat is een belangrijke oorzaak van extra CO₂-uitstoot?",
+      options: ["Fossiele brandstoffen verbranden", "Meer bomen planten", "Minder auto’s gebruiken"],
+      correct: 0,
+      expl: "Het verbranden van olie, gas en kolen zorgt voor CO₂-uitstoot."
+    },
+    {
+      q: "Wat bedoelen we met ontbossing?",
+      options: ["Meer bos aanplanten", "Bossen kappen", "Bomen water geven"],
+      correct: 1,
+      expl: "Bossen kappen vermindert CO₂-opname en kan uitstoot vergroten."
+    },
+    {
+      q: "Wat is het broeikaseffect (simpel)?",
+      options: ["Warmte wordt deels vastgehouden in de atmosfeer", "Alle warmte verdwijnt meteen de ruimte in", "De zon wordt zwakker"],
+      correct: 0,
+      expl: "Bepaalde gassen houden warmte vast waardoor het warmer wordt."
+    },
+    {
+      q: "Welke sector draagt vaak bij aan broeikasgassen?",
+      options: ["Energie-opwekking met kolen/gas", "Schaken", "Tekenen"],
+      correct: 0,
+      expl: "Energie-opwekking met fossiele bronnen veroorzaakt uitstoot."
+    }
+  ];
+
+  let idx = 0;
+  let correctCount = 0;
+  let locked = false;
+
+  const qtext = document.getElementById("qtext");
+  const opts = document.getElementById("opts");
+  const fb = document.getElementById("fb");
+  const prog = document.getElementById("prog");
+
+  function setProgress(){
+    const pct = Math.round((idx / questions.length) * 100);
+    prog.style.width = pct + "%";
+  }
+
+  function render(){
+    locked = false;
+    fb.textContent = "";
+    fb.className = "feedback";
+    setProgress();
+
+    const cur = questions[idx];
+    qtext.textContent = `${idx+1}/${questions.length} – ${cur.q}`;
+    opts.innerHTML = "";
+
+    cur.options.forEach((t, i) => {
+      const b = document.createElement("button");
+      b.className = "opt";
+      b.type = "button";
+      b.textContent = t;
+      b.onclick = () => choose(i);
+      opts.appendChild(b);
+    });
+  }
+
+  function choose(i){
+    if(locked) return;
+    locked = true;
+
+    const cur = questions[idx];
+    const buttons = Array.from(opts.querySelectorAll("button"));
+    buttons.forEach(b => b.disabled = true);
+
+    if(i === cur.correct){
+      correctCount++;
+      fb.textContent = "Goed! " + cur.expl;
+      fb.classList.add("ok");
+    } else {
+      fb.textContent = "Niet helemaal. " + cur.expl;
+      fb.classList.add("bad");
+    }
+
+    setTimeout(() => {
+      idx++;
+      if(idx >= questions.length) finish();
+      else render();
+    }, 900);
+  }
+
+  function loadProgress(){
+    try{
+      const raw = localStorage.getItem(PROGRESS_KEY);
+      return raw ? JSON.parse(raw) : { game1:false, game2:false, game3:false };
+    }catch{
+      return { game1:false, game2:false, game3:false };
+    }
+  }
+  function saveProgress(p){ localStorage.setItem(PROGRESS_KEY, JSON.stringify(p)); }
+
+  function finish(){
+    document.getElementById("qbox").style.display = "none";
+    document.getElementById("end").style.display = "block";
+    prog.style.width = "100%";
+
+    const pct = Math.round((correctCount / questions.length) * 100);
+    document.getElementById("scoreLine").textContent = `Score: ${correctCount}/${questions.length} (${pct}%)`;
+
+    const passed = pct >= 70;
+    const resultLine = document.getElementById("resultLine");
+    if(passed){
+      resultLine.textContent = "Behaald! Game 2 is ontgrendeld.";
+      resultLine.className = "feedback ok";
+      const p = loadProgress();
+      p.game1 = true;
+      saveProgress(p);
+      // notify hub (optional)
+      window.opener?.postMessage?.({type:"GAME_DONE", gameId:"game1"}, "*");
+      window.parent?.postMessage?.({type:"GAME_DONE", gameId:"game1"}, "*");
+    } else {
+      resultLine.textContent = "Nog niet behaald. Probeer opnieuw (doel: ≥ 70%).";
+      resultLine.className = "feedback bad";
+    }
+
+    document.getElementById("again").onclick = () => location.reload();
+    document.getElementById("back").onclick = () => location.href = "index.html";
+  }
+
+  render();
+</script>
+</body>
+</html>
