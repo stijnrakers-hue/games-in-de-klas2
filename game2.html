@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Game 2 – Oorzaak → gevolg</title>
+  <style>
+    :root { --bg:#0b1220; --card:#111a2e; --text:#e9eefc; --muted:#a9b4d6; --ok:#33d17a; --bad:#ff6b6b; --btn:#3b82f6; }
+    body{ margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; background:linear-gradient(180deg,#0b1220,#070b14); color:var(--text); }
+    .wrap{ max-width:900px; margin:0 auto; padding:18px; }
+    h1{ font-size:20px; margin:8px 0 6px; }
+    p{ margin:0 0 12px; color:var(--muted); line-height:1.4; }
+    .card{ background:var(--card); border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:14px; box-shadow:0 10px 30px rgba(0,0,0,.25); }
+    .grid{ display:grid; gap:12px; grid-template-columns:1fr; }
+    @media(min-width:800px){ .grid{ grid-template-columns:1fr 1fr; } }
+    label{ font-weight:800; display:block; margin:8px 0 6px; }
+    select{ width:100%; font-size:16px; padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.06); color:var(--text); min-height:44px; }
+    .row{ display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+    .btn{ border:0; border-radius:12px; padding:12px 14px; font-weight:800; cursor:pointer; background:var(--btn); color:white; min-height:44px; }
+    .btn2{ background:rgba(255,255,255,.08); color:var(--text); border:1px solid rgba(255,255,255,.14); }
+    .fb{ margin-top:10px; font-weight:900; }
+    .ok{ color:var(--ok); }
+    .bad{ color:var(--bad); }
+    .note{ color:var(--muted); font-size:13px; margin-top:8px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Game 2 (Bloom: Begrijpen) – Koppel oorzaak → gevolg</h1>
+    <p>Kies bij elke oorzaak het beste gevolg. Doel: <b>alles correct</b>.</p>
+
+    <div class="card">
+      <div class="grid" id="pairs"></div>
+
+      <div class="row">
+        <button class="btn" id="check">Controleer</button>
+        <button class="btn btn2" id="reset">Reset</button>
+        <button class="btn btn2" id="back">Terug naar hub</button>
+      </div>
+
+      <div class="fb" id="fb"></div>
+      <div class="note">Tip: maak een screenshot van het “Behaald!” resultaat.</div>
+    </div>
+  </div>
+
+<script>
+  const PROGRESS_KEY = "gik_progress_v1";
+
+  const causes = [
+    { id:"c1", text:"Ontbossing" },
+    { id:"c2", text:"Meer fossiele brandstoffen verbranden" },
+    { id:"c3", text:"Meer broeikasgassen in de atmosfeer" }
+  ];
+
+  const effects = [
+    { id:"e1", text:"Meer CO₂ blijft in de lucht / minder opname" },
+    { id:"e2", text:"Hogere CO₂-uitstoot" },
+    { id:"e3", text:"Temperatuur stijgt gemiddeld (opwarming)" },
+    { id:"e4", text:"Zeespiegel daalt" } // afleider
+  ];
+
+  const correct = {
+    c1: "e1",
+    c2: "e2",
+    c3: "e3"
+  };
+
+  function loadProgress(){
+    try{
+      const raw = localStorage.getItem(PROGRESS_KEY);
+      return raw ? JSON.parse(raw) : { game1:false, game2:false, game3:false };
+    }catch{
+      return { game1:false, game2:false, game3:false };
+    }
+  }
+  function saveProgress(p){ localStorage.setItem(PROGRESS_KEY, JSON.stringify(p)); }
+
+  // Gate: require game1
+  const p = loadProgress();
+  if(!p.game1){
+    alert("Game 2 is nog vergrendeld. Behaal eerst Game 1.");
+    location.href = "index.html";
+  }
+
+  const pairsEl = document.getElementById("pairs");
+
+  function render(){
+    pairsEl.innerHTML = "";
+    causes.forEach((c, idx) => {
+      const wrap = document.createElement("div");
+      wrap.style.marginBottom = "10px";
+
+      const lab = document.createElement("label");
+      lab.textContent = `${idx+1}. ${c.text}`;
+      lab.htmlFor = c.id;
+
+      const sel = document.createElement("select");
+      sel.id = c.id;
+      sel.innerHTML = `<option value="">Kies een gevolg…</option>` + effects.map(e => `<option value="${e.id}">${e.text}</option>`).join("");
+
+      wrap.appendChild(lab);
+      wrap.appendChild(sel);
+      pairsEl.appendChild(wrap);
+    });
+    document.getElementById("fb").textContent = "";
+    document.getElementById("fb").className = "fb";
+  }
+
+  function check(){
+    let ok = 0;
+    let total = causes.length;
+    for(const c of causes){
+      const val = document.getElementById(c.id).value;
+      if(val && val === correct[c.id]) ok++;
+    }
+    const fb = document.getElementById("fb");
+    if(ok === total){
+      fb.textContent = "Behaald! Alle koppelingen kloppen. Game 3 is ontgrendeld.";
+      fb.className = "fb ok";
+      const p2 = loadProgress();
+      p2.game2 = true;
+      saveProgress(p2);
+      window.opener?.postMessage?.({type:"GAME_DONE", gameId:"game2"}, "*");
+      window.parent?.postMessage?.({type:"GAME_DONE", gameId:"game2"}, "*");
+    } else {
+      fb.textContent = `Nog niet goed: ${ok}/${total} correct. Pas je keuzes aan en probeer opnieuw.`;
+      fb.className = "fb bad";
+    }
+  }
+
+  document.getElementById("check").onclick = check;
+  document.getElementById("reset").onclick = render;
+  document.getElementById("back").onclick = () => location.href = "index.html";
+
+  render();
+</script>
+</body>
+</html>
