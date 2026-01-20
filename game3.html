@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Game 3 – Scenario keuzes</title>
+  <style>
+    :root { --bg:#0b1220; --card:#111a2e; --text:#e9eefc; --muted:#a9b4d6; --ok:#33d17a; --bad:#ff6b6b; --btn:#3b82f6; }
+    body{ margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; background:linear-gradient(180deg,#0b1220,#070b14); color:var(--text); }
+    .wrap{ max-width:800px; margin:0 auto; padding:18px; }
+    h1{ font-size:20px; margin:8px 0 6px; }
+    p{ margin:0 0 12px; color:var(--muted); line-height:1.4; }
+    .card{ background:var(--card); border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:14px; box-shadow:0 10px 30px rgba(0,0,0,.25); }
+    .scenario{ font-weight:900; margin:0 0 12px; }
+    .opt{ display:block; width:100%; text-align:left; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.06); color:var(--text);
+      border-radius:12px; padding:12px 12px; margin:10px 0; cursor:pointer; font-weight:800; font-size:15px; min-height:44px; }
+    .opt:active{ transform:translateY(1px); }
+    .opt[disabled]{ opacity:.6; cursor:not-allowed; }
+    .fb{ margin-top:10px; font-weight:900; }
+    .ok{ color:var(--ok); }
+    .bad{ color:var(--bad); }
+    .row{ display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+    .btn{ border:0; border-radius:12px; padding:12px 14px; font-weight:900; cursor:pointer; background:var(--btn); color:white; min-height:44px; }
+    .btn2{ background:rgba(255,255,255,.08); color:var(--text); border:1px solid rgba(255,255,255,.14); }
+    .bar{ height:10px; background:rgba(255,255,255,.08); border-radius:999px; overflow:hidden; margin:10px 0 14px; }
+    .bar > div{ height:100%; background:var(--btn); width:0%; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Game 3 (Bloom: Toepassen) – Scenario keuzes</h1>
+    <p>Kies de beste oplossing per situatie. Doel: <b>minimaal 2 van 3</b> scenario’s correct.</p>
+
+    <div class="card">
+      <div class="bar"><div id="prog"></div></div>
+
+      <div id="play">
+        <div class="scenario" id="sctext"></div>
+        <div id="opts"></div>
+        <div class="fb" id="fb"></div>
+      </div>
+
+      <div id="end" style="display:none;">
+        <div class="scenario">Klaar!</div>
+        <p id="scoreLine"></p>
+        <div id="resultLine" class="fb"></div>
+        <div class="row">
+          <button class="btn" id="again">Opnieuw</button>
+          <button class="btn btn2" id="back">Terug naar hub</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const PROGRESS_KEY = "gik_progress_v1";
+
+  function loadProgress(){
+    try{
+      const raw = localStorage.getItem(PROGRESS_KEY);
+      return raw ? JSON.parse(raw) : { game1:false, game2:false, game3:false };
+    }catch{
+      return { game1:false, game2:false, game3:false };
+    }
+  }
+  function saveProgress(p){ localStorage.setItem(PROGRESS_KEY, JSON.stringify(p)); }
+
+  // Gate: require game2
+  const p = loadProgress();
+  if(!p.game2){
+    alert("Game 3 is nog vergrendeld. Behaal eerst Game 2.");
+    location.href = "index.html";
+  }
+
+  const scenarios = [
+    {
+      q: "Een school wil de CO₂-uitstoot verlagen. Wat is de beste keuze?",
+      options: ["Meer lampen laten branden", "LED-verlichting + apparaten uit na schooltijd", "Elke dag extra printen"],
+      correct: 1,
+      expl: "LED + minder verbruik verlaagt energiegebruik en uitstoot."
+    },
+    {
+      q: "Een wijk heeft veel autoverkeer. Wat helpt het meest tegen uitstoot?",
+      options: ["Meer fietsen en OV stimuleren", "Meer parkeerplaatsen bouwen", "Auto’s langer laten stationair draaien"],
+      correct: 0,
+      expl: "Fiets/OV verminderen autokilometers en dus uitstoot."
+    },
+    {
+      q: "Een bosgebied wordt gekapt. Wat is een passende maatregel?",
+      options: ["Niets doen", "Herbebossing en beschermen van natuur", "Meer bomen kappen voor ruimte"],
+      correct: 1,
+      expl: "Bomen nemen CO₂ op en helpen klimaatimpact beperken."
+    }
+  ];
+
+  let idx = 0;
+  let good = 0;
+  let locked = false;
+
+  const sctext = document.getElementById("sctext");
+  const opts = document.getElementById("opts");
+  const fb = document.getElementById("fb");
+  const prog = document.getElementById("prog");
+
+  function setProgress(){
+    const pct = Math.round((idx / scenarios.length) * 100);
+    prog.style.width = pct + "%";
+  }
+
+  function render(){
+    locked = false;
+    fb.textContent = "";
+    fb.className = "fb";
+    setProgress();
+
+    const cur = scenarios[idx];
+    sctext.textContent = `${idx+1}/${scenarios.length} – ${cur.q}`;
+    opts.innerHTML = "";
+
+    cur.options.forEach((t, i) => {
+      const b = document.createElement("button");
+      b.className = "opt";
+      b.type = "button";
+      b.textContent = t;
+      b.onclick = () => choose(i);
+      opts.appendChild(b);
+    });
+  }
+
+  function choose(i){
+    if(locked) return;
+    locked = true;
+
+    const cur = scenarios[idx];
+    const buttons = Array.from(opts.querySelectorAll("button"));
+    buttons.forEach(b => b.disabled = true);
+
+    if(i === cur.correct){
+      good++;
+      fb.textContent = "Goed! " + cur.expl;
+      fb.classList.add("ok");
+    } else {
+      fb.textContent = "Niet de beste keuze. " + cur.expl;
+      fb.classList.add("bad");
+    }
+
+    setTimeout(() => {
+      idx++;
+      if(idx >= scenarios.length) finish();
+      else render();
+    }, 1100);
+  }
+
+  function finish(){
+    document.getElementById("play").style.display = "none";
+    document.getElementById("end").style.display = "block";
+    prog.style.width = "100%";
+
+    document.getElementById("scoreLine").textContent = `Score: ${good}/${scenarios.length} scenario’s goed.`;
+
+    const passed = good >= 2;
+    const resultLine = document.getElementById("resultLine");
+
+    if(passed){
+      resultLine.textContent = "Behaald! Je hebt het arrangement afgerond.";
+      resultLine.className = "fb ok";
+      const p3 = loadProgress();
+      p3.game3 = true;
+      saveProgress(p3);
+      window.opener?.postMessage?.({type:"GAME_DONE", gameId:"game3"}, "*");
+      window.parent?.postMessage?.({type:"GAME_DONE", gameId:"game3"}, "*");
+    } else {
+      resultLine.textContent = "Nog niet behaald. Probeer opnieuw (doel: minimaal 2 goed).";
+      resultLine.className = "fb bad";
+    }
+
+    document.getElementById("again").onclick = () => location.reload();
+    document.getElementById("back").onclick = () => location.href = "index.html";
+  }
+
+  render();
+</script>
+</body>
+</html>
